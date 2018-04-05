@@ -201,6 +201,19 @@ struct sInputParams
     msdk_char strPlgGuid[MSDK_MAX_FILENAME_LEN];
     bool    need_plugin;
 
+    /* run-time ProcAmp parameters */
+    typedef struct {
+        bool   isEnabled;
+        mfxU32 interval;
+        mfxF64 value1;
+        mfxF64 value2;        
+    } sRtProcAmpParam;
+
+    sRtProcAmpParam rtHue;
+    sRtProcAmpParam rtSaturation;
+    sRtProcAmpParam rtBrightness;
+    sRtProcAmpParam rtContrast;
+
     /* ********************** */
     /* input\output streams   */
     /* ********************** */

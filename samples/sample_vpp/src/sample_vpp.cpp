@@ -16,6 +16,8 @@ This sample was distributed or derived from the Intel's Media Samples package.
 The original version of this sample may be obtained from https://software.intel.com/en-us/intel-media-server-studio
 or https://software.intel.com/en-us/media-client-solutions-support.
 \**********************************************************************************/
+#include <vector>
+#include <map>
 
 #include "sample_vpp_utils.h"
 #include "sample_vpp_pts.h"
@@ -268,6 +270,7 @@ int main(int argc, msdk_char *argv[])
 {
     mfxStatus           sts = MFX_ERR_NONE;
     mfxU32              nFrames = 0;
+    mfxU32              nOutFrames = 0;
     mfxU16              nInStreamInd = 0;
 
     CRawVideoReader     yuvReaders[MAX_INPUT_STREAMS];
@@ -302,6 +305,10 @@ int main(int argc, msdk_char *argv[])
     ROIGenerator       inROIGenerator;
     ROIGenerator       outROIGenerator;
     bool               bROITest[2] = {false, false};
+
+    /* a vector of procamp ext buffers for each frame */
+    std::map<void*, mfxExtVPPProcAmp> m_ProcAmpData;
+    std::map<void*, std::vector<mfxExtBuffer*> > m_extBuffPtrStorageForOutputSurf;
 
     //mfxU16              argbSurfaceIndex = 0xffff;
 
@@ -689,6 +696,7 @@ int main(int argc, msdk_char *argv[])
                 allocator.responseOut.NumFrameActual ,
                 (Params.use_extapi ? &pWorkSurf : &pOutSurf));
             MSDK_BREAK_ON_ERROR(sts);
+            nOutFrames++;
 
 #ifdef ENABLE_MCTF
             if (bAttachMctfBuffer)
@@ -769,6 +777,75 @@ int main(int argc, msdk_char *argv[])
 
                 }
 #endif
+
+                mfxExtVPPProcAmp procAmp;
+                // set default values for ProcAmp filters
+                procAmp.Header.BufferId = MFX_EXTBUFF_VPP_PROCAMP;
+                procAmp.Header.BufferSz = sizeof(mfxExtVPPProcAmp);
+                procAmp.Brightness = 0.0F;
+                procAmp.Contrast   = 1.0F;
+                procAmp.Hue        = 0.0F;
+                procAmp.Saturation = 1.0F;
+
+                if (Params.rtHue.isEnabled)
+                {
+                    if((nOutFrames / Params.rtHue.interval & 0x1) == 0)
+                    {
+                        procAmp.Hue = Params.rtHue.value1;
+                    }
+                    else
+                    {
+                        procAmp.Hue = Params.rtHue.value2;
+                    }
+                }
+
+                if (Params.rtSaturation.isEnabled)
+                {
+                    if((nOutFrames / Params.rtSaturation.interval & 0x1) == 0)
+                    {
+                        procAmp.Saturation = Params.rtSaturation.value1;
+                    }
+                    else
+                    {
+                        procAmp.Saturation = Params.rtSaturation.value2;
+                    }
+                }
+
+                if (Params.rtBrightness.isEnabled)
+                {
+                    if((nOutFrames / Params.rtBrightness.interval & 0x1) == 0)
+                    {
+                        procAmp.Brightness = Params.rtBrightness.value1;
+                    }
+                    else
+                    {
+                        procAmp.Brightness = Params.rtBrightness.value2;
+                    }
+                }
+
+                if (Params.rtContrast.isEnabled)
+                {
+                    if((nOutFrames / Params.rtContrast.interval & 0x1) == 0)
+                    {
+                        procAmp.Contrast = Params.rtContrast.value1;
+                    }
+                    else
+                    {
+                        procAmp.Contrast = Params.rtContrast.value2;
+                    }
+                }
+
+                if (Params.rtHue.isEnabled || Params.rtSaturation.isEnabled ||
+                    Params.rtBrightness.isEnabled || Params.rtContrast.isEnabled)
+                {
+                    m_ProcAmpData[pOutSurf] = procAmp;
+                    std::vector<mfxExtBuffer*> extBuffPtrStorage;
+                    extBuffPtrStorage.push_back((mfxExtBuffer *)&m_ProcAmpData[pOutSurf]);
+                    m_extBuffPtrStorageForOutputSurf[pOutSurf] = extBuffPtrStorage;
+                    pOutSurf->Data.ExtParam = m_extBuffPtrStorageForOutputSurf[pOutSurf].data();
+                    pOutSurf->Data.NumExtParam = m_extBuffPtrStorageForOutputSurf[pOutSurf].size();
+                }
+
                 sts = frameProcessor.pmfxVPP->RunFrameVPPAsync(
                     pInSurf[nInStreamInd],
                     pOutSurf,
@@ -863,6 +940,7 @@ int main(int argc, msdk_char *argv[])
                 allocator.responseOut.NumFrameActual ,
                 (Params.use_extapi ? &pWorkSurf : &pOutSurf));
             MSDK_BREAK_ON_ERROR(sts);
+            nOutFrames++;
 
             bDoNotUpdateIn = false;
 
@@ -885,6 +963,74 @@ int main(int argc, msdk_char *argv[])
             }
             else
             {
+                mfxExtVPPProcAmp procAmp;
+                // set default values for ProcAmp filters
+                procAmp.Header.BufferId = MFX_EXTBUFF_VPP_PROCAMP;
+                procAmp.Header.BufferSz = sizeof(mfxExtVPPProcAmp);
+                procAmp.Brightness = 0.0F;
+                procAmp.Contrast   = 1.0F;
+                procAmp.Hue        = 0.0F;
+                procAmp.Saturation = 1.0F;
+
+                if (Params.rtHue.isEnabled)
+                {
+                    if((nOutFrames / Params.rtHue.interval & 0x1) == 0)
+                    {
+                        procAmp.Hue = Params.rtHue.value1;
+                    }
+                    else
+                    {
+                        procAmp.Hue = Params.rtHue.value2;
+                    }
+                }
+
+                if (Params.rtSaturation.isEnabled)
+                {
+                    if((nOutFrames / Params.rtSaturation.interval & 0x1) == 0)
+                    {
+                        procAmp.Saturation = Params.rtSaturation.value1;
+                    }
+                    else
+                    {
+                        procAmp.Saturation = Params.rtSaturation.value2;
+                    }
+                }
+
+                if (Params.rtBrightness.isEnabled)
+                {
+                    if((nOutFrames / Params.rtBrightness.interval & 0x1) == 0)
+                    {
+                        procAmp.Brightness = Params.rtBrightness.value1;
+                    }
+                    else
+                    {
+                        procAmp.Brightness = Params.rtBrightness.value2;
+                    }
+                }
+
+                if (Params.rtContrast.isEnabled)
+                {
+                    if((nOutFrames / Params.rtContrast.interval & 0x1) == 0)
+                    {
+                        procAmp.Contrast = Params.rtContrast.value1;
+                    }
+                    else
+                    {
+                        procAmp.Contrast = Params.rtContrast.value2;
+                    }
+                }
+
+                if (Params.rtHue.isEnabled || Params.rtSaturation.isEnabled ||
+                    Params.rtBrightness.isEnabled || Params.rtContrast.isEnabled)
+                {
+                    m_ProcAmpData[pOutSurf] = procAmp;
+                    std::vector<mfxExtBuffer*> extBuffPtrStorage;
+                    extBuffPtrStorage.push_back((mfxExtBuffer *)&m_ProcAmpData[pOutSurf]);
+                    m_extBuffPtrStorageForOutputSurf[pOutSurf] = extBuffPtrStorage;
+                    pOutSurf->Data.ExtParam = m_extBuffPtrStorageForOutputSurf[pOutSurf].data();
+                    pOutSurf->Data.NumExtParam = m_extBuffPtrStorageForOutputSurf[pOutSurf].size();
+                }
+
                 sts = frameProcessor.pmfxVPP->RunFrameVPPAsync(
                     NULL,
                     pOutSurf,
